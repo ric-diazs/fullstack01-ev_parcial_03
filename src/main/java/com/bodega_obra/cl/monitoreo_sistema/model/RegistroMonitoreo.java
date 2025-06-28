@@ -5,8 +5,6 @@ import java.time.LocalTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -20,7 +18,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RegistroMonitoreo {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @Column(nullable = false)
@@ -29,12 +26,12 @@ public class RegistroMonitoreo {
     @Column(nullable = false)
     private LocalTime horaRegistro;
 
-    @Column(nullable = false, length = 12)
+    @Column(nullable = false)
     private String tipoEvento; // ("ERROR", "INFO", "WARNING")
 
-    @Column(nullable = false, length = 80)
+    @Column(nullable = false)
     private String mensaje; // texto del evento (ej: "falló la conexión con la base de datos").
 
-    @Column(nullable = false, length = 60)
+    @Column(nullable = false)
     private String servicio; // nombre del microservicio que generó el evento (ej: "gestion de usuarios")
 }

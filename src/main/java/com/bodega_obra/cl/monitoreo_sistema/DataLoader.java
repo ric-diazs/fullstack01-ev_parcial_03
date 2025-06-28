@@ -6,7 +6,7 @@ import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-//import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.bodega_obra.cl.monitoreo_sistema.model.RegistroMonitoreo;
@@ -14,7 +14,7 @@ import com.bodega_obra.cl.monitoreo_sistema.repository.RegistroMonitoreoReposito
 
 import net.datafaker.Faker;
 
-//@Profile("dev")
+@Profile("dev")
 @Component
 public class DataLoader implements CommandLineRunner {
     @Autowired

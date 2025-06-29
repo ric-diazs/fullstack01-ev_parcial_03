@@ -20,10 +20,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.bodega_obra.cl.monitoreo_sistema.assemblers.RegistroMonitoreoModelAssembler;
 import com.bodega_obra.cl.monitoreo_sistema.model.RegistroMonitoreo;
 import com.bodega_obra.cl.monitoreo_sistema.service.RegistroMonitoreoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +37,9 @@ public class RegistroMonitoreoControllerTest {
 
     @MockitoBean
     private RegistroMonitoreoService registroMonitoreoService;
+
+    @MockitoBean
+    private RegistroMonitoreoModelAssembler registroAssembler;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -52,6 +57,8 @@ public class RegistroMonitoreoControllerTest {
         registro.setTipoEvento("INFO");
         registro.setMensaje("El sistema se actualizo exitosamente.");
         registro.setServicio("Gestion de usuarios");
+
+        when(registroAssembler.toModel(any(RegistroMonitoreo.class))).thenReturn(EntityModel.of(registro));
     }
 
     /*
@@ -70,12 +77,57 @@ public class RegistroMonitoreoControllerTest {
         // Se ejecuta metodo GET y se verifica que los datos de 'registro' calcen con los ingresados
         mockMvc.perform(get("/api/v1/registros-monitoreo"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].id").value(1))
-            .andExpect(jsonPath("$[0].fechaRegistro").value("2025-03-15"))
-            .andExpect(jsonPath("$[0].horaRegistro").value("13:20:43"))
-            .andExpect(jsonPath("$[0].tipoEvento").value("INFO"))
-            .andExpect(jsonPath("$[0].mensaje").value("El sistema se actualizo exitosamente."))
-            .andExpect(jsonPath("$[0].servicio").value("Gestion de usuarios"));
+            .andExpect(jsonPath("$._embedded.registroMonitoreoList[0].id").value(1))
+            .andExpect(jsonPath("$._embedded.registroMonitoreoList[0].fechaRegistro").value("2025-03-15"))
+            .andExpect(jsonPath("$._embedded.registroMonitoreoList[0].horaRegistro").value("13:20:43"))
+            .andExpect(jsonPath("$._embedded.registroMonitoreoList[0].tipoEvento").value("INFO"))
+            .andExpect(jsonPath("$._embedded.registroMonitoreoList[0].mensaje").value("El sistema se actualizo exitosamente."))
+            .andExpect(jsonPath("$._embedded.registroMonitoreoList[0].servicio").value("Gestion de usuarios"));
+        /*
+        ==================================================================================================================
+          Por qué usar "$._embedded.registroMonitoreoList[0].<nombre_atributo>" en vez de solo "$[0].<nombre_atributo>":
+        ==================================================================================================================
+          - El controller esta devolviendo datos usando Spring HATEOAS ==> Respuesta JSON no es una lista directa (ver ejemplo).
+          - Respuesta del controller: Objeto que contiene una seccion "_embedded" con los recursos.
+          - Dentro de "_embedded": Spring genera automaticamente la clase 'registroMonitoreoList'.
+          - Si no usara Spring HATEOAS, podria entrar a <nombre_atributo> como "$[0].<nombre_atributo>"
+
+          Es decir:
+          - En vez de que respuesta JSON sea asi:
+
+          ```
+          [
+              {
+                "id": 1,
+                "mensaje": "Ejemplo"
+              },
+              {
+                "id": 2,
+                "mensaje": "Otro"
+              }
+          ]
+         ```
+        
+         En realidad es asi:
+
+         ```
+        {
+            "_embedded": {
+                "registroMonitoreoList": [
+                    {
+                        "id": 1,
+                        "mensaje": "Ejemplo",
+                        "_links": { ... }
+                    }
+                ]
+            },
+            "_links": {
+                "self": { "href": "/api/v1/registros-monitoreo" }
+            }
+        }
+        ```
+
+         */
     }
 
     // 2. Prueba de metodo buscarRegistroMonitoreo()

@@ -1,9 +1,16 @@
 package com.bodega_obra.cl.monitoreo_sistema.controller;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.MediaTypes;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.bodega_obra.cl.monitoreo_sistema.assemblers.RegistroMonitoreoModelAssembler;
 import com.bodega_obra.cl.monitoreo_sistema.model.RegistroMonitoreo;
 import com.bodega_obra.cl.monitoreo_sistema.service.RegistroMonitoreoService;
 
@@ -31,7 +39,10 @@ public class RegistroMonitoreoController {
     @Autowired
     private RegistroMonitoreoService registroMonitoreoService;
 
-    @GetMapping
+    @Autowired
+    private RegistroMonitoreoModelAssembler registroAssembler;
+
+    @GetMapping(produces = {MediaType.APPLICATION_JSON_VALUE, MediaTypes.HAL_JSON_VALUE})
     @Operation(summary = "Obtener todos los registros.", description = "Regresa todos los registros del microservicio de monitoreo de sistema.")
     @ApiResponses(
         value = {
@@ -46,17 +57,24 @@ public class RegistroMonitoreoController {
             @ApiResponse(responseCode = "204", description = "No hay registros de monitoreo.")
         }
     )
-    public ResponseEntity<List<RegistroMonitoreo>> enlistarRegistrosMonitoreo() {
-        List<RegistroMonitoreo> registrosMonitoreo = registroMonitoreoService.findAll();
+    public ResponseEntity<CollectionModel<EntityModel<RegistroMonitoreo>>> enlistarRegistrosMonitoreo() {
+        List<EntityModel<RegistroMonitoreo>> registrosMonitoreo = registroMonitoreoService.findAll().stream()
+            .map(registroAssembler::toModel)
+            .collect(Collectors.toList());
 
         if(registrosMonitoreo.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
 
-        return ResponseEntity.ok(registrosMonitoreo);
+        CollectionModel<EntityModel<RegistroMonitoreo>> colecciones = CollectionModel.of(
+                registrosMonitoreo,
+                linkTo(methodOn(RegistroMonitoreoController.class).enlistarRegistrosMonitoreo()).withSelfRel()
+            );
+
+        return ResponseEntity.ok(colecciones);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping(value = "/{id}", produces = {MediaType.APPLICATION_JSON_VALUE, MediaTypes.HAL_JSON_VALUE})
     @Operation(summary = "Obtener un registro.", description = "Se obtiene un registro del microservicio mediante su número de ID.")
     @ApiResponses(
         value = {
@@ -71,16 +89,16 @@ public class RegistroMonitoreoController {
             @ApiResponse(responseCode = "404", description = "Registro no encontrado.")
         }
     )
-    public ResponseEntity<RegistroMonitoreo> buscarRegistroMonitoreo(@PathVariable Integer id) {
+    public ResponseEntity<EntityModel<RegistroMonitoreo>> buscarRegistroMonitoreo(@PathVariable Integer id) {
         try {
             RegistroMonitoreo registroMonitoreo = registroMonitoreoService.findById(id);
-            return ResponseEntity.ok(registroMonitoreo);
+            return ResponseEntity.ok(registroAssembler.toModel(registroMonitoreo));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @PostMapping
+    @PostMapping(produces = {MediaType.APPLICATION_JSON_VALUE, MediaTypes.HAL_JSON_VALUE})
     @Operation(summary = "Crear un nuevo registro.", description = "Se crea un nuevo registro en el microservicio.")
     @ApiResponses(
         value = {
@@ -95,12 +113,15 @@ public class RegistroMonitoreoController {
             @ApiResponse(responseCode = "400", description = "No se pudo crear el registro.")
         }
     )
-    public ResponseEntity<RegistroMonitoreo> crearRegistroMonitoreo(@RequestBody RegistroMonitoreo registroMonitoreo) {
+    public ResponseEntity<EntityModel<RegistroMonitoreo>> crearRegistroMonitoreo(@RequestBody RegistroMonitoreo registroMonitoreo) {
         RegistroMonitoreo nuevoRegistro = registroMonitoreoService.save(registroMonitoreo);
-        return ResponseEntity.status(HttpStatus.CREATED).body(nuevoRegistro);
+        
+        return ResponseEntity
+            .created(linkTo(methodOn(RegistroMonitoreoController.class).buscarRegistroMonitoreo(nuevoRegistro.getId())).toUri())
+            .body(registroAssembler.toModel(nuevoRegistro));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", produces = {MediaType.APPLICATION_JSON_VALUE, MediaTypes.HAL_JSON_VALUE})
     @Operation(summary = "Actualizar un registro.", description = "Se actualiza un registro del microservicio a partir de su número de ID.")
     @ApiResponses(
         value = {
@@ -115,7 +136,7 @@ public class RegistroMonitoreoController {
             @ApiResponse(responseCode = "404", description = "Registro no encontrado.")
         }
     )
-    public ResponseEntity<RegistroMonitoreo> actualizarRegistroMonitoreo(@PathVariable Integer id, @RequestBody RegistroMonitoreo registroMonitoreo) {
+    public ResponseEntity<EntityModel<RegistroMonitoreo>> actualizarRegistroMonitoreo(@PathVariable Integer id, @RequestBody RegistroMonitoreo registroMonitoreo) {
         try {
             RegistroMonitoreo registroModificar = registroMonitoreoService.findById(id);
             registroModificar.setId(id);
@@ -126,13 +147,13 @@ public class RegistroMonitoreoController {
             registroModificar.setServicio(registroMonitoreo.getServicio());
 
             registroMonitoreoService.save(registroModificar);
-            return ResponseEntity.ok(registroMonitoreo);
+            return ResponseEntity.ok(registroAssembler.toModel(registroMonitoreo));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping(value = "/{id}", produces = {MediaType.APPLICATION_JSON_VALUE, MediaTypes.HAL_JSON_VALUE})
     @Operation(summary = "Eliminar un registro.", description = "Se elimina un registro del microservicio a partir de su número de ID.")
     @ApiResponses(
         value = {
